@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 export ORG="bluelens"
-export IMAGE="bl-image-indexer"
+export IMAGE="bl-object-indexer"
 export TAG='prod'
 export NAMESPACE="prod"
 

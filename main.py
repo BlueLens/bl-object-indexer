@@ -7,6 +7,7 @@ import redis
 import os
 
 from stylelens_feature.feature_extract import ExtractFeature
+from stylelens_object.objects import Objects
 from bluelens_spawning_pool import spawning_pool
 from bluelens_log import Logging
 
@@ -33,12 +34,13 @@ options = {
   'REDIS_SERVER': REDIS_SERVER,
   'REDIS_PASSWORD': REDIS_PASSWORD
 }
-log = Logging(options, tag='bl-image-indexer')
+log = Logging(options, tag='bl-object-indexer')
 rconn = redis.StrictRedis(REDIS_SERVER, port=6379, password=REDIS_PASSWORD)
 feature_extractor = ExtractFeature(use_gpu=True)
 storage = s3.S3(AWS_ACCESS_KEY, AWS_SECRET_ACCESS_KEY)
 
 heart_bit = True
+object_api = Objects()
 
 def start_index():
   log.info('start_index')
@@ -59,18 +61,29 @@ def start_index():
     obj = pickle.loads(obj_data)
     log.debug(obj)
 
-    try:
-      file = download_image(obj)
-    except Exception as e:
-      log.error(str(e))
-      continue
-    feature = feature_extractor.extract_feature(file)
-    log.debug(feature)
-    obj['feature'] = feature.tolist()
-    rconn.lpush(REDIS_OBJECT_FEATURE_QUEUE, pickle.dumps(obj, protocol=2))
+    if obj['feature'] == None:
+      try:
+          file = download_image(obj)
+      except Exception as e:
+        log.error(str(e))
+        continue
+      feature = feature_extractor.extract_feature(file)
+      log.debug(feature)
+      obj['feature'] = feature.tolist()
+      save_object_to_db(obj)
+      rconn.lpush(REDIS_OBJECT_FEATURE_QUEUE, pickle.dumps(obj, protocol=2))
 
     global  heart_bit
     heart_bit = True
+
+def save_object_to_db(obj):
+  log.info('save_object_to_db')
+  global object_api
+  try:
+    api_response = object_api.update_object(obj)
+    log.debug(api_response)
+  except Exception as e:
+    log.warn("Exception when calling update_object: %s\n" % e)
 
 def check_health():
   global  heart_bit
@@ -79,10 +92,10 @@ def check_health():
     heart_bit = False
     Timer(120, check_health, ()).start()
   else:
-    exit()
+    delete_pod()
 
-def exit():
-  log.info('exit: ' + SPAWN_ID)
+def delete_pod():
+  log.info('delete_pod: ' + SPAWN_ID)
 
   data = {}
   data['namespace'] = RELEASE_MODE

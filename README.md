@@ -1,1 +1,1 @@
-# bl-image-indexer
+# bl-object-indexer

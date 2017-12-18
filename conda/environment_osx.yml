@@ -1,4 +1,4 @@
-name: bl-image-indexer
+name: bl-object-indexer
 channels:
 - defaults
 dependencies:
@@ -34,5 +34,5 @@ dependencies:
   - tensorflow==1.3.0
   - tensorflow-tensorboard==0.1.8
   - werkzeug==0.12.2
-prefix: /Users/bok95/anaconda/envs/bl-image-indexer
+prefix: /Users/bok95/anaconda/envs/bl-object-indexer
 

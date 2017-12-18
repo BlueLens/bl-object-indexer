@@ -1,4 +1,11 @@
-FROM bluelens/bl-image-indexer-base:latest
+FROM bluelens/faiss:ubuntu16-py2
+
+RUN mkdir -p /opt/app/model
+
+RUN apt-get install -y curl
+RUN curl https://s3.ap-northeast-2.amazonaws.com/bluelens-style-model/prod/classification/inception_v3/classify_image_graph_def.pb -o /opt/app/model/classify_image_graph_def.pb
+
+ENV CLASSIFY_GRAPH /opt/app/model/classify_image_graph_def.pb
 
 RUN mkdir -p /usr/src/app
 

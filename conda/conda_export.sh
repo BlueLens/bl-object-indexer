@@ -7,5 +7,5 @@ else
     ARCH=$1
 fi
 
-source activate bl-image-indexer
+source activate bl-object-indexer
 conda env export > environment_$ARCH.yml
