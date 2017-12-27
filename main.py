@@ -16,6 +16,8 @@ STR_STORAGE = "storage"
 STR_CLASS_CODE = "class_code"
 STR_NAME = "name"
 
+MAX_INDEX_NUM = 200
+
 AWS_ACCESS_KEY = os.environ['AWS_ACCESS_KEY']
 AWS_SECRET_ACCESS_KEY = os.environ['AWS_SECRET_ACCESS_KEY']
 
@@ -27,7 +29,7 @@ RELEASE_MODE = os.environ['RELEASE_MODE']
 DATA_SOURCE_QUEUE = 'REDIS_QUEUE'
 DATA_SOURCE_DB = 'DB'
 
-REDIS_OBJECT_FEATURE_QUEUE = 'bl:object:feature:queue'
+# REDIS_OBJECT_FEATURE_QUEUE = 'bl:object:feature:queue'
 REDIS_OBJECT_INDEX_QUEUE = 'bl:object:index:queue'
 
 options = {
@@ -45,8 +47,13 @@ object_api = Objects()
 def start_index():
   log.info('start_index')
   def items():
+    count = 0
     while True:
-      yield rconn.blpop([REDIS_OBJECT_INDEX_QUEUE])
+      if count > MAX_INDEX_NUM:
+        delete_pod()
+      else:
+        count = count + 1
+        yield rconn.blpop([REDIS_OBJECT_INDEX_QUEUE])
 
   def request_stop(signum, frame):
     log.info('stopping')
@@ -59,19 +66,22 @@ def start_index():
   for item in items():
     key, obj_data = item
     obj = pickle.loads(obj_data)
-    log.debug(obj)
+    # log.debug(obj)
 
-    if obj['feature'] == None:
+    if 'feature' in obj:
+      log.debug('Already has a feature:')
+      continue
+    else:
       try:
           file = download_image(obj)
       except Exception as e:
         log.error(str(e))
         continue
       feature = feature_extractor.extract_feature(file)
-      log.debug(feature)
+      # log.debug(feature)
       obj['feature'] = feature.tolist()
       save_object_to_db(obj)
-      rconn.lpush(REDIS_OBJECT_FEATURE_QUEUE, pickle.dumps(obj, protocol=2))
+      # rconn.lpush(REDIS_OBJECT_FEATURE_QUEUE, pickle.dumps(obj, protocol=2))
 
     global  heart_bit
     heart_bit = True
@@ -114,4 +124,8 @@ def download_image(obj):
 
 if __name__ == "__main__":
   Timer(120, check_health, ()).start()
-  start_index()
+  try:
+    start_index()
+  except Exception as e:
+    log.error(str(e))
+    delete_pod()
