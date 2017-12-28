@@ -28,6 +28,8 @@ RELEASE_MODE = os.environ['RELEASE_MODE']
 # DATA_SOURCE = os.environ['DATA_SOURCE']
 DATA_SOURCE_QUEUE = 'REDIS_QUEUE'
 DATA_SOURCE_DB = 'DB'
+FEATURE_GRPC_HOST = os.environ['FEATURE_GRPC_HOST']
+FEATURE_GRPC_PORT = os.environ['FEATURE_GRPC_PORT']
 
 # REDIS_OBJECT_FEATURE_QUEUE = 'bl:object:feature:queue'
 REDIS_OBJECT_INDEX_QUEUE = 'bl:object:index:queue'
@@ -51,6 +53,7 @@ def start_index():
     while True:
       if count > MAX_INDEX_NUM:
         delete_pod()
+        exit()
       else:
         count = count + 1
         yield rconn.blpop([REDIS_OBJECT_INDEX_QUEUE])
@@ -79,7 +82,9 @@ def start_index():
         continue
       feature = feature_extractor.extract_feature(file)
       # log.debug(feature)
-      obj['feature'] = feature.tolist()
+      # obj['feature'] = feature.tolist()
+      #The type of feature is bytes
+      obj['feature'] = feature
       save_object_to_db(obj)
       # rconn.lpush(REDIS_OBJECT_FEATURE_QUEUE, pickle.dumps(obj, protocol=2))
 
